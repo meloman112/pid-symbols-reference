@@ -13,6 +13,11 @@ let drag = null;
 let history = [];
 let dirty = false;
 let palette = [];
+let zoom = 1;
+let pan = null; // перетаскивание листа пробелом или средней кнопкой
+let spaceHeld = false;
+const SHEET = { width: 3000, height: 2000 };
+const ZOOM_STEP = 1.2;
 const shapes = {}; // svg_path → { inner, w, h, box, ports }
 
 const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -167,6 +172,8 @@ function renderProps() {
       </ul>
       <h3>Клавиши</h3>
       <ul class="keys"><li><kbd>V</kbd> выбор, <kbd>P</kbd> труба, <kbd>S</kbd> сигнал, <kbd>T</kbd> текст</li>
+        <li><kbd>Ctrl</kbd>+колесо или <kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd> — масштаб листа, <kbd>Ctrl</kbd>+<kbd>0</kbd> — 100%</li>
+        <li>Пробел или средняя кнопка мыши + перетаскивание — двигать лист</li>
         <li><kbd>R</kbd> повернуть, <kbd>Del</kbd> удалить, <kbd>Ctrl</kbd>+<kbd>Z</kbd> отменить, <kbd>Esc</kbd> прервать линию</li></ul>`;
     return;
   }
@@ -347,7 +354,48 @@ function pointer(event) {
   return [p.x, p.y];
 }
 
+// ---------- масштаб и прокрутка листа ----------
+
+// anchor — точка экрана, которая должна остаться на месте (курсор при Ctrl+колесо)
+function setZoom(value, anchor) {
+  const canvas = $("#canvas");
+  const box = canvas.getBoundingClientRect();
+  const [ax, ay] = anchor || [box.left + box.width / 2, box.top + box.height / 2];
+  const [sx, sy] = pointer({ clientX: ax, clientY: ay });
+  zoom = Math.min(4, Math.max(0.2, value));
+  const sheet = $("#sheet");
+  sheet.setAttribute("width", SHEET.width * zoom);
+  sheet.setAttribute("height", SHEET.height * zoom);
+  sheet.style.setProperty("--zoom", zoom);
+  $("#zoom-reset").textContent = `${Math.round(zoom * 100)}%`;
+  const rect = sheet.getBoundingClientRect();
+  canvas.scrollLeft += rect.left + sx * zoom - ax;
+  canvas.scrollTop += rect.top + sy * zoom - ay;
+}
+
+function zoomToFit() {
+  const canvas = $("#canvas");
+  const box = doc.parts.length || doc.lines.length ? contentBox() : { x: 0, y: 0, width: 1200, height: 800 };
+  setZoom(Math.min(2, canvas.clientWidth / box.width, canvas.clientHeight / box.height));
+  canvas.scrollLeft = box.x * zoom - (canvas.clientWidth - box.width * zoom) / 2;
+  canvas.scrollTop = box.y * zoom - (canvas.clientHeight - box.height * zoom) / 2;
+}
+
+function onWheel(event) {
+  if (!event.ctrlKey && !event.metaKey) return;
+  event.preventDefault();
+  setZoom(zoom * (event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP), [event.clientX, event.clientY]);
+}
+
+function startPan(event) {
+  event.preventDefault();
+  const canvas = $("#canvas");
+  pan = { x: event.clientX, y: event.clientY, left: canvas.scrollLeft, top: canvas.scrollTop };
+  $("#sheet").classList.add("panning");
+}
+
 function onPointerDown(event) {
+  if (event.button === 1 || spaceHeld) return startPan(event);
   const point = pointer(event);
   if (tool === "pipe" || tool === "signal") return drawClick(point);
   if (tool === "text") {
@@ -372,6 +420,11 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
+  if (pan) {
+    $("#canvas").scrollLeft = pan.left - (event.clientX - pan.x);
+    $("#canvas").scrollTop = pan.top - (event.clientY - pan.y);
+    return;
+  }
   const point = pointer(event);
   if (draft) {
     const port = nearestPort(point, draft.ends[0]);
@@ -387,6 +440,10 @@ function onPointerMove(event) {
 }
 
 function onPointerUp() {
+  if (pan) {
+    pan = null;
+    $("#sheet").classList.remove("panning");
+  }
   if (!drag) return;
   if (drag.moved) {
     if (selected.type === "part") seatActuator(drag.item);
@@ -406,8 +463,18 @@ function setTool(name) {
 }
 
 function onKey(event) {
+  // Ctrl +/−/0 масштабируют лист, а не всю страницу
+  if ((event.ctrlKey || event.metaKey) && ["+", "=", "-", "0"].includes(event.key)) {
+    event.preventDefault();
+    return setZoom(event.key === "0" ? 1 : zoom * (event.key === "-" ? 1 / ZOOM_STEP : ZOOM_STEP));
+  }
   if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
   const key = event.key.toLowerCase();
+  if (key === " ") {
+    event.preventDefault();
+    spaceHeld = true;
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "я")) return event.preventDefault(), undo();
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   const tools = { v: "select", м: "select", p: "pipe", з: "pipe", s: "signal", ы: "signal", t: "text", е: "text" };
@@ -552,6 +619,12 @@ function bind() {
   addEventListener("pointermove", onPointerMove);
   addEventListener("pointerup", onPointerUp);
   addEventListener("keydown", onKey);
+  addEventListener("keyup", (event) => { if (event.key === " ") spaceHeld = false; });
+  $("#canvas").addEventListener("wheel", onWheel, { passive: false });
+  $("#zoom-in").addEventListener("click", () => setZoom(zoom * ZOOM_STEP));
+  $("#zoom-out").addEventListener("click", () => setZoom(zoom / ZOOM_STEP));
+  $("#zoom-reset").addEventListener("click", () => setZoom(1));
+  $("#zoom-fit").addEventListener("click", zoomToFit);
   addEventListener("beforeunload", (event) => { if (dirty) event.preventDefault(); });
   document.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => setTool(b.dataset.tool)));
   document.querySelectorAll("[data-export]").forEach((b) => b.addEventListener("click", () => exportAs(b.dataset.export)));

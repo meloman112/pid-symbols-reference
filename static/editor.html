@@ -17,6 +17,12 @@
     <button data-tool="signal" title="Линия связи (S)">Сигнал</button>
     <button data-tool="text" title="Надпись (T)">Текст</button>
   </div>
+  <div class="ed-zoom" role="group" aria-label="Масштаб листа">
+    <button id="zoom-out" title="Уменьшить (Ctrl −, Ctrl + колесо)" aria-label="Уменьшить">−</button>
+    <button id="zoom-reset" title="Масштаб 100% (Ctrl 0)">100%</button>
+    <button id="zoom-in" title="Увеличить (Ctrl +, Ctrl + колесо)" aria-label="Увеличить">+</button>
+    <button id="zoom-fit" title="Показать всю схему">По размеру</button>
+  </div>
   <div class="ed-file">
     <select id="open" aria-label="Открыть схему"></select>
     <button class="btn" id="new">Новая</button>
@@ -34,7 +40,7 @@
     <div id="palette-list"></div>
   </aside>
   <section class="canvas" id="canvas">
-    <svg id="sheet" xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200">
+    <svg id="sheet" xmlns="http://www.w3.org/2000/svg" width="3000" height="2000" viewBox="0 0 3000 2000">
       <g id="content"><g id="lines"></g><g id="parts"></g><g id="texts"></g></g>
       <g id="overlay"></g>
     </svg>

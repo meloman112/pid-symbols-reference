@@ -31,8 +31,13 @@
     linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
     linear-gradient(var(--grid-minor) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
-  background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
+  background-size: calc(50px * var(--zoom, 1)) calc(50px * var(--zoom, 1)), calc(50px * var(--zoom, 1)) calc(50px * var(--zoom, 1)),
+    calc(10px * var(--zoom, 1)) calc(10px * var(--zoom, 1)), calc(10px * var(--zoom, 1)) calc(10px * var(--zoom, 1));
 }
+#sheet.panning, #sheet.panning * { cursor: grabbing !important; }
+.ed-zoom { display: flex; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+.ed-zoom button { min-width: 36px; padding: 7px 10px; border: 0; border-right: 1px solid var(--rule); background: var(--sheet); cursor: pointer; font-variant-numeric: tabular-nums; }
+.ed-zoom button:last-child { border-right: 0; }
 #sheet.drawing { cursor: crosshair; }
 #sheet .part, #sheet [data-text] { cursor: move; }
 #sheet.drawing .part { cursor: crosshair; }
