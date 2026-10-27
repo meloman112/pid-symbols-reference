@@ -15,6 +15,8 @@
 - Веб: http://localhost:8080
 - MCP: http://localhost:8081/mcp (streamable HTTP)
 
+Если порты заняты, задайте другие в файле `.env` рядом с `compose.yaml`: `WEB_PORT=8790` и `MCP_PORT=8791`.
+
 База лежит в `data/pid.db` и подключена в контейнеры как volume, поэтому правки из веба сохраняются на диске.
 
 ## Подключение MCP

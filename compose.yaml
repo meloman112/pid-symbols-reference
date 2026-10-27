@@ -8,9 +8,9 @@ services:
   web:
     <<: *app
     command: ["python", "web.py", "8080"]
-    ports: ["8080:8080"]
+    ports: ["${WEB_PORT:-8080}:8080"]
 
   mcp:
     <<: *app
     command: ["python", "mcp_server.py", "8081"]
-    ports: ["8081:8081"]
+    ports: ["${MCP_PORT:-8081}:8081"]
