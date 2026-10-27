@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник P&ID</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">Справочник P&amp;ID</a>
+  <label class="search">
+    <span class="visually-hidden">Поиск</span>
+    <input id="q" type="search" autocomplete="off" spellcheck="false"
+           placeholder="Задвижка, кориолисовый расходомер, тег FIC-101…">
+    <kbd>/</kbd>
+  </label>
+  <nav id="standards" class="standards" aria-label="Стандарт"></nav>
+</header>
+
+<main class="layout">
+  <section class="results" aria-label="Результаты">
+    <div class="results-bar">
+      <select id="category" aria-label="Категория"></select>
+      <p id="count" class="count" aria-live="polite"></p>
+    </div>
+    <div id="tag"></div>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <aside id="detail" class="detail" aria-label="Карточка символа" hidden></aside>
+</main>
+
+<template id="empty-detail">
+  <div class="detail-empty">
+    <p>Выберите символ слева — здесь появится его рисунок, назначение, типичные ошибки и тот же элемент в других стандартах.</p>
+    <p>Тег прибора вводите заглавными латинскими буквами: <b>PDIT-101</b>, <b>LSHH</b>, <b>TIC</b> — справочник разберёт его по буквам.</p>
+  </div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
