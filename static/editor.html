@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Редактор схем P&amp;ID</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/editor.css">
+</head>
+<body class="ed-body">
+<header class="ed-top">
+  <a class="brand" href="/">Справочник P&amp;ID</a>
+  <input id="name" class="ed-name" placeholder="Название схемы" aria-label="Название схемы" autocomplete="off">
+  <div class="ed-tools" role="toolbar" aria-label="Инструменты">
+    <button data-tool="select" title="Выбор и перемещение (V)">Выбор</button>
+    <button data-tool="pipe" title="Трубопровод (P)">Труба</button>
+    <button data-tool="signal" title="Линия связи (S)">Сигнал</button>
+    <button data-tool="text" title="Надпись (T)">Текст</button>
+  </div>
+  <div class="ed-file">
+    <select id="open" aria-label="Открыть схему"></select>
+    <button class="btn" id="new">Новая</button>
+    <button class="btn primary" id="save">Сохранить</button>
+    <button class="btn" data-export="svg" title="Скачать SVG">SVG</button>
+    <button class="btn" data-export="png" title="Скачать PNG">PNG</button>
+    <button class="btn" data-export="dxf" title="Скачать DXF для AutoCAD или Компаса">DXF</button>
+  </div>
+</header>
+
+<main class="ed">
+  <aside class="palette" aria-label="Символы">
+    <input id="find" type="search" placeholder="Найти символ" autocomplete="off">
+    <select id="category" aria-label="Раздел"></select>
+    <div id="palette-list"></div>
+  </aside>
+  <section class="canvas" id="canvas">
+    <svg id="sheet" xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200">
+      <g id="content"><g id="lines"></g><g id="parts"></g><g id="texts"></g></g>
+      <g id="overlay"></g>
+    </svg>
+  </section>
+  <aside class="props" id="props" aria-label="Свойства"></aside>
+</main>
+<p class="ed-status" id="status" aria-live="polite"></p>
+<svg id="measure" width="0" height="0" aria-hidden="true"></svg>
+
+<script src="/static/auth.js"></script>
+<script src="/static/dxf.js"></script>
+<script src="/static/editor.js"></script>
+</body>
+</html>

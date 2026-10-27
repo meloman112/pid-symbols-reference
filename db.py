@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS assemblies (
     notes TEXT NOT NULL,
     svg_path TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS drawings (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS assembly_parts (
     assembly_id INTEGER NOT NULL REFERENCES assemblies(id),
     symbol_id INTEGER NOT NULL REFERENCES symbols(id),
@@ -183,3 +189,29 @@ def decode_tag(tag):
                            "meaning": " | ".join(m for m in meanings if m) or "—"})
     return result
 
+
+
+def drawings():
+    return [dict(r) for r in connect().execute("SELECT id, name, updated_at FROM drawings ORDER BY updated_at DESC")]
+
+
+def drawing(drawing_id):
+    row = connect().execute("SELECT * FROM drawings WHERE id = ?", (drawing_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def save_drawing(drawing_id, name, data):
+    conn = connect()
+    if drawing_id:
+        conn.execute("UPDATE drawings SET name = ?, data = ?, updated_at = datetime('now') WHERE id = ?",
+                     (name, data, drawing_id))
+    else:
+        drawing_id = conn.execute("INSERT INTO drawings (name, data) VALUES (?, ?)", (name, data)).lastrowid
+    conn.commit()
+    return drawing_id
+
+
+def delete_drawing(drawing_id):
+    conn = connect()
+    conn.execute("DELETE FROM drawings WHERE id = ?", (drawing_id,))
+    conn.commit()

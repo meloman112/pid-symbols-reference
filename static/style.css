@@ -194,3 +194,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .used-in { margin: 4px 0 0; padding: 0; list-style: none; }
 .used-in li { margin-bottom: 4px; }
 .link { padding: 0; border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; text-align: left; }
+
+/* Вход по паролю */
+.login { max-width: 380px; padding: 20px 22px; border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink); }
+.login::backdrop { background: rgb(31 42 46 / .35); }
+.login h2 { margin: 0 0 6px; font-size: 1.1rem; }
+.login p { margin: 0 0 12px; color: var(--muted); font-size: .92rem; }
+.login input { width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); }
+.login .status { margin: 8px 0 0; }

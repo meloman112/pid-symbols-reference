@@ -55,7 +55,8 @@ function renderStandards() {
   }
   const total = facets.standards.reduce((sum, s) => sum + s.count, 0);
   const active = family(state.standard);
-  const assemblies = `<button class="chip chip-asm" data-view="asm" aria-pressed="${state.view === "asm"}">Типовые узлы <span class="n">${facets.assemblies}</span></button>`;
+  const assemblies = `<button class="chip chip-asm" data-view="asm" aria-pressed="${state.view === "asm"}">Типовые узлы <span class="n">${facets.assemblies}</span></button>`
+    + `<a class="chip chip-asm" href="/editor">Редактор схем</a>`;
   const top = [assemblies, chip("", "Все стандарты", total, !state.standard && !state.view), ...[...families].map(([name, f]) =>
     f.members.length === 1
       ? chip(f.members[0].name, label(f.members[0].name), f.count, state.standard === f.members[0].name)
@@ -234,7 +235,7 @@ async function saveSymbol(event, id) {
   event.preventDefault();
   const status = event.target.querySelector(".status");
   try {
-    await api(`/api/symbol/${id}`, {
+    await apiWrite(`/api/symbol/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(Object.fromEntries(new FormData(event.target))),
