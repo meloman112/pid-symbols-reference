@@ -50,6 +50,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(db.facets())
         if url.path == "/api/search":
             return self.json(api_search(parse_qs(url.query)))
+        if url.path == "/api/assemblies":
+            return self.json(db.assemblies())
+        if url.path.startswith("/api/assembly/"):
+            found = db.assembly(int(url.path.rsplit("/", 1)[1]))
+            return self.json(found) if found else self.json({"error": "узел не найден"}, 404)
         if url.path.startswith("/api/symbol/"):
             symbol = api_symbol(int(url.path.rsplit("/", 1)[1]))
             return self.json(symbol) if symbol else self.json({"error": "символ не найден"}, 404)

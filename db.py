@@ -49,6 +49,20 @@ CREATE TABLE IF NOT EXISTS letters (
     function TEXT,
     PRIMARY KEY (standard, letter)
 );
+CREATE TABLE IF NOT EXISTS assemblies (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    standard TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    notes TEXT NOT NULL,
+    svg_path TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS assembly_parts (
+    assembly_id INTEGER NOT NULL REFERENCES assemblies(id),
+    symbol_id INTEGER NOT NULL REFERENCES symbols(id),
+    label TEXT NOT NULL
+);
 """
 
 FIELDS = "id, standard, code, name_en, reg_no, name_ru, category, purpose, placement, mistakes, similar, svg_path"
@@ -100,7 +114,8 @@ def facets():
     conn = connect()
     count = lambda column: [{"name": r[0], "count": r[1]} for r in conn.execute(
         f"SELECT {column}, count(*) FROM symbols GROUP BY 1 ORDER BY 2 DESC")]
-    return {"standards": count("standard"), "categories": count("category")}
+    return {"standards": count("standard"), "categories": count("category"),
+            "assemblies": conn.execute("SELECT count(*) FROM assemblies").fetchone()[0]}
 
 
 def related(symbol, limit=6):
@@ -119,7 +134,30 @@ def related(symbol, limit=6):
 def get(symbol_id):
     row = connect().execute(f"SELECT {FIELDS}, source_url, license, author FROM symbols WHERE id = ?",
                             (symbol_id,)).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    symbol = dict(row)
+    symbol["used_in"] = [dict(r) for r in connect().execute(
+        """SELECT DISTINCT a.id, a.name FROM assembly_parts p JOIN assemblies a ON a.id = p.assembly_id
+           WHERE p.symbol_id = ? ORDER BY a.id""", (symbol_id,))]
+    return symbol
+
+
+def assemblies():
+    return [dict(r) for r in connect().execute("SELECT id, code, standard, name, description, svg_path FROM assemblies ORDER BY id")]
+
+
+def assembly(assembly_id):
+    conn = connect()
+    row = conn.execute("SELECT * FROM assemblies WHERE id = ?", (assembly_id,)).fetchone()
+    if not row:
+        return None
+    result = dict(row)
+    result["notes"] = result["notes"].split("\n")
+    result["parts"] = [dict(r) for r in conn.execute(
+        """SELECT p.label, s.id, s.standard, s.name_ru FROM assembly_parts p JOIN symbols s ON s.id = p.symbol_id
+           WHERE p.assembly_id = ? ORDER BY p.rowid""", (assembly_id,))]
+    return result
 
 
 EDITABLE = ("name_ru", "category", "purpose", "placement", "mistakes", "similar")

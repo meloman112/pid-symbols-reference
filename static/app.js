@@ -1,5 +1,5 @@
 const $ = (selector) => document.querySelector(selector);
-const state = { q: "", standard: "", category: "", id: null };
+const state = { q: "", standard: "", category: "", id: null, view: "", asm: null };
 const FIELDS = [
   ["purpose", "Назначение"],
   ["placement", "Где ставить"],
@@ -27,11 +27,13 @@ function readUrl() {
   state.standard = params.get("standard") || "";
   state.category = params.get("category") || "";
   state.id = Number(params.get("id")) || null;
+  state.view = params.get("view") || "";
+  state.asm = Number(params.get("asm")) || null;
 }
 
 function writeUrl() {
   const params = new URLSearchParams();
-  for (const key of ["q", "standard", "category", "id"]) if (state[key]) params.set(key, state[key]);
+  for (const key of ["view", "asm", "q", "standard", "category", "id"]) if (state[key]) params.set(key, state[key]);
   history.replaceState(null, "", params.toString() ? `?${params}` : "/");
 }
 
@@ -53,7 +55,8 @@ function renderStandards() {
   }
   const total = facets.standards.reduce((sum, s) => sum + s.count, 0);
   const active = family(state.standard);
-  const top = [chip("", "Все стандарты", total, !state.standard), ...[...families].map(([name, f]) =>
+  const assemblies = `<button class="chip chip-asm" data-view="asm" aria-pressed="${state.view === "asm"}">Типовые узлы <span class="n">${facets.assemblies}</span></button>`;
+  const top = [assemblies, chip("", "Все стандарты", total, !state.standard && !state.view), ...[...families].map(([name, f]) =>
     f.members.length === 1
       ? chip(f.members[0].name, label(f.members[0].name), f.count, state.standard === f.members[0].name)
       : chip(name, label(name), f.count, state.standard === name))];
@@ -104,8 +107,55 @@ function renderTag(rows) {
   </section>`;
 }
 
+function assemblyCard(a) {
+  return `<button class="tile asm-tile" data-asm="${a.id}">
+    <span class="mm"><img src="/${esc(a.svg_path)}" alt="" loading="lazy"></span>
+    <span class="name">${esc(a.name)}</span>
+    <span class="std">${esc(a.description)}</span>
+  </button>`;
+}
+
+async function renderAssemblies() {
+  $("#tag").innerHTML = "";
+  $("#count").textContent = "";
+  if (state.asm) return renderAssembly(state.asm);
+  const list = await api("/api/assemblies");
+  $("#grid").className = "asm-grid";
+  $("#grid").innerHTML = `<p class="intro">Фрагменты схем по ГОСТ, собранные из символов справочника. Откройте узел и нажмите на любой элемент — справа появится его карточка.</p>`
+    + list.map(assemblyCard).join("");
+}
+
+async function renderAssembly(id) {
+  const a = await api(`/api/assembly/${id}`);
+  const svgText = await (await fetch(`/${a.svg_path}`)).text();
+  $("#grid").className = "";
+  $("#grid").innerHTML = `<article class="asm">
+    <button class="btn" data-action="asm-list">Все узлы</button>
+    <h1>${esc(a.name)}</h1>
+    <p class="lead">${esc(a.description)}</p>
+    <div class="asm-sheet mm">${svgText}</div>
+    <p class="count">Наведите на элемент — он подсветится; нажмите — справа откроется его карточка.</p>
+    <div class="asm-cols">
+      <section><h2>Состав</h2><ol class="parts">${a.parts.map((p, i) =>
+        `<li><button data-part="${i}" data-id="${p.id}"><b>${esc(p.label)}</b><span>${esc(p.name_ru)}</span><span class="std ${stdClass(p.standard)}"><span class="std-mark"></span>${esc(label(p.standard))}</span></button></li>`).join("")}</ol></section>
+      <section><h2>На что обратить внимание</h2><ul class="notes">${a.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></section>
+    </div>
+  </article>`;
+  // Тонкие линии трудно попасть мышью — каждой детали даём прозрачную подложку по её габаритам
+  document.querySelectorAll(".asm-sheet .part").forEach((g) => {
+    const box = g.getBBox();
+    g.insertAdjacentHTML("afterbegin", `<rect x="${box.x - 4}" y="${box.y - 4}" width="${box.width + 8}" height="${box.height + 8}" fill="transparent"/>`);
+  });
+}
+
+function highlight(index, on) {
+  document.querySelectorAll(`.asm [data-part="${index}"]`).forEach((el) => el.classList.toggle("hl", on));
+}
+
 async function search() {
   writeUrl();
+  $("#category").hidden = state.view === "asm";
+  if (state.view === "asm") return renderAssemblies();
   if (!state.q && !state.category && !state.standard) return renderCategories();
   const params = new URLSearchParams({ q: state.q, standard: state.standard, category: state.category });
   const { items, tag } = await api(`/api/search?${params}`);
@@ -134,6 +184,8 @@ function detailView(symbol) {
       ${symbol.reg_no ? `<dt>Номер ISO</dt><dd>${esc(symbol.reg_no)}</dd>` : ""}
     </dl>
     ${sections}
+    ${symbol.used_in.length ? `<h2>Применяется в узлах</h2><ul class="used-in">${symbol.used_in.map((a) =>
+      `<li><button class="link" data-asm="${a.id}">${esc(a.name)}</button></li>`).join("")}</ul>` : ""}
     ${related}
     <div class="actions">
       <a class="btn" href="/${esc(symbol.svg_path)}" download="${esc(symbol.code)}.svg">Скачать SVG</a>
@@ -167,6 +219,8 @@ async function openSymbol(id, mode = "view") {
   panel.onclick = async (event) => {
     const action = event.target.closest("[data-action]")?.dataset.action;
     const related = event.target.closest(".tile");
+    const asm = event.target.closest("[data-asm]");
+    if (asm) return openAssembly(Number(asm.dataset.asm));
     if (action === "edit") openSymbol(id, "edit");
     if (action === "cancel") openSymbol(id);
     if (action === "close") closeSymbol();
@@ -194,6 +248,16 @@ async function saveSymbol(event, id) {
   }
 }
 
+function openAssembly(id) {
+  state.view = "asm";
+  state.asm = id;
+  state.q = "";
+  $("#q").value = "";
+  renderStandards();
+  search();
+  scrollTo(0, 0);
+}
+
 function closeSymbol() {
   state.id = null;
   writeUrl();
@@ -205,11 +269,19 @@ function bind() {
   $("#q").addEventListener("input", (event) => {
     clearTimeout(searchTimer);
     state.q = event.target.value.trim();
+    if (state.view) {
+      state.view = "";
+      state.asm = null;
+      renderStandards();
+    }
     searchTimer = setTimeout(search, 180);
   });
   $("#standards").addEventListener("click", (event) => {
     const chip = event.target.closest(".chip");
     if (!chip) return;
+    if (chip.dataset.view) return openAssembly(null);
+    state.view = "";
+    state.asm = null;
     state.standard = chip.dataset.standard;
     renderStandards();
     search();
@@ -219,6 +291,11 @@ function bind() {
     search();
   });
   $("#grid").addEventListener("click", (event) => {
+    if (event.target.closest('[data-action="asm-list"]')) return openAssembly(null);
+    const asm = event.target.closest("[data-asm]");
+    if (asm) return openAssembly(Number(asm.dataset.asm));
+    const part = event.target.closest(".asm [data-id]");
+    if (part) return openSymbol(Number(part.dataset.id));
     const category = event.target.closest("[data-category]");
     if (category) {
       state.category = category.dataset.category;
@@ -228,6 +305,12 @@ function bind() {
     const found = event.target.closest(".tile");
     if (found) openSymbol(Number(found.dataset.id));
   });
+  for (const type of ["mouseover", "mouseout"]) {
+    $("#grid").addEventListener(type, (event) => {
+      const part = event.target.closest(".asm [data-part]");
+      if (part) highlight(part.dataset.part, type === "mouseover");
+    });
+  }
   document.addEventListener("keydown", (event) => {
     if (event.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
       event.preventDefault();
